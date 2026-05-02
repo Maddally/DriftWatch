@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>List Your Apartment — DriftWatch</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --border: #e2ddd6;
+    --border2: #ccc8c0;
+    --text: #1a1814;
+    --muted: #8a8580;
+    --accent: #2d5a3d;
+    --accent2: #4a8c62;
+    --warn: #c0392b;
+    --warn-bg: #fdf2f0;
+    --success: #2d5a3d;
+    --success-bg: #f0f7f3;
+    --tag-bg: #f0ede8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; min-height: 100vh;
+  }
+
+  /* Grain texture overlay */
+  body::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:999;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.4;
+  }
+
+  header {
+    background: var(--accent); color: #fff;
+    padding: 18px 40px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; letter-spacing:-0.5px; }
+  .logo-sub { font-size:11px; opacity:0.7; margin-top:1px; letter-spacing:1px; }
+  .back-link { font-size:11px; color:rgba(255,255,255,0.7); text-decoration:none; transition:color 0.2s; }
+  .back-link:hover { color:#fff; }
+
+  .hero {
+    background: var(--accent); color:#fff;
+    padding: 48px 40px 56px; position:relative; overflow:hidden;
+  }
+  .hero::before {
+    content:''; position:absolute; right:-60px; top:-60px;
+    width:300px; height:300px; border-radius:50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .hero::after {
+    content:''; position:absolute; right:60px; bottom:-80px;
+    width:200px; height:200px; border-radius:50%;
+    background: rgba(255,255,255,0.03);
+  }
+  .hero h1 { font-family:'Syne',sans-serif; font-size:36px; font-weight:800; line-height:1.1; margin-bottom:12px; }
+  .hero h1 span { opacity:0.5; }
+  .hero p { font-size:13px; opacity:0.7; line-height:1.7; max-width:480px; }
+  .trust-pills { display:flex; gap:8px; margin-top:24px; flex-wrap:wrap; }
+  .trust-pill {
+    background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
+    padding:5px 12px; border-radius:20px; font-size:11px; color:rgba(255,255,255,0.8);
+    display:flex; align-items:center; gap:6px;
+  }
+
+  .page { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* Steps indicator */
+  .steps {
+    display:flex; gap:0; margin-bottom:40px;
+    border:1px solid var(--border); border-radius:10px; overflow:hidden;
+  }
+  .step {
+    flex:1; padding:12px 16px; font-size:11px; color:var(--muted);
+    display:flex; align-items:center; gap:8px; border-right:1px solid var(--border);
+    transition: background 0.3s;
+  }
+  .step:last-child { border-right:none; }
+  .step.active { background:#fff; color:var(--accent); }
+  .step.done   { background:var(--success-bg); color:var(--success); }
+  .step-num {
+    width:20px; height:20px; border-radius:50%; border:1.5px solid currentColor;
+    display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0;
+  }
+  .step.done .step-num { background:var(--success); border-color:var(--success); color:#fff; }
+
+  /* Form sections */
+  .form-section {
+    background:#fff; border:1px solid var(--border); border-radius:12px;
+    padding:28px; margin-bottom:16px; display:none;
+    animation: slideIn 0.3s ease;
+  }
+  .form-section.active { display:block; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .section-header { margin-bottom:24px; }
+  .section-header h2 { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:4px; }
+  .section-header p  { font-size:12px; color:var(--muted); line-height:1.6; }
+
+  /* Fields */
+  .field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .field-row.thirds { grid-template-columns:1fr 1fr 1fr; }
+  .field-row.solo   { grid-template-columns:1fr; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-size:11px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; }
+  .field label .req { color:var(--warn); margin-left:2px; }
+  .field input, .field select, .field textarea {
+    background: var(--bg); border:1px solid var(--border); color:var(--text);
+    font-family:'DM Mono',monospace; font-size:13px; padding:10px 12px;
+    border-radius:7px; outline:none; transition: border-color 0.2s, box-shadow 0.2s;
+    width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,90,61,0.08);
+  }
+  .field input.err, .field select.err { border-color:var(--warn); }
+  .field .hint { font-size:10px; color:var(--muted); }
+  .field .err-msg { font-size:10px; color:var(--warn); display:none; }
+  .field.has-error .err-msg { display:block; }
+  .field.has-error input, .field.has-error select { border-color:var(--warn); }
+  textarea { resize:vertical; min-height:90px; }
+
+  /* Amenities checkboxes */
+  .amenity-grid { display:flex; flex-wrap:wrap; gap:8px; }
+  .amenity-check { display:none; }
+  .amenity-label {
+    background:var(--tag-bg); border:1px solid var(--border); padding:6px 12px;
+    border-radius:6px; font-size:11px; cursor:pointer; color:var(--muted);
+    transition:all 0.15s; user-select:none;
+  }
+  .amenity-check:checked + .amenity-label {
+    background:var(--success-bg); border-color:var(--accent); color:var(--accent);
+  }
+
+  /* Bedroom / bathroom picker */
+  .picker { display:flex; gap:6px; flex-wrap:wrap; }
+  .pick-opt { display:none; }
+  .pick-lbl {
+    padding:7px 14px; border:1px solid var(--border); border-radius:6px;
+    font-size:12px; cursor:pointer; color:var(--muted); transition:all 0.15s; background:var(--bg);
+  }
+  .pick-opt:checked + .pick-lbl { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  /* Price display */
+  .price-display {
+    background:var(--success-bg); border:1px solid rgba(45,90,61,0.2);
+    border-radius:8px; padding:12px 16px; margin-top:8px;
+    display:none; align-items:center; gap:10px;
+  }
+  .price-display.show { display:flex; }
+  .price-amount { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--accent); }
+  .price-label  { font-size:11px; color:var(--muted); }
+
+  /* Address verify */
+  .addr-status {
+    margin-top:6px; font-size:11px; padding:6px 10px; border-radius:5px; display:none;
+  }
+  .addr-status.checking { display:block; color:var(--muted); background:var(--tag-bg); }
+  .addr-status.ok  { display:block; color:var(--success); background:var(--success-bg); border:1px solid rgba(45,90,61,0.2); }
+  .addr-status.bad { display:block; color:var(--warn); background:var(--warn-bg); border:1px solid rgba(192,57,43,0.2); }
+
+  /* Navigation buttons */
+  .btn-row { display:flex; gap:10px; margin-top:24px; justify-content:flex-end; }
+  .btn {
+    font-family:'DM Mono',monospace; font-size:13px; padding:11px 24px;
+    border-radius:8px; cursor:pointer; border:none; transition:all 0.2s; letter-spacing:0.3px;
+  }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:var(--accent2); }
+  .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-ghost  { background:var(--tag-bg); color:var(--muted); border:1px solid var(--border); }
+  .btn-ghost:hover { color:var(--text); border-color:var(--border2); }
+
+  /* Protection notice */
+  .protection-box {
+    background:var(--tag-bg); border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px; margin-top:16px;
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  .protection-icon { font-size:18px; flex-shrink:0; }
+  .protection-text { font-size:11px; color:var(--muted); line-height:1.7; }
+  .protection-text strong { color:var(--text); }
+
+  /* Success screen */
+  .success-screen {
+    display:none; text-align:center; padding:60px 20px;
+    background:#fff; border:1px solid var(--border); border-radius:12px;
+  }
+  .success-screen.show { display:block; animation:slideIn 0.4s ease; }
+  .success-icon { font-size:56px; margin-bottom:20px; }
+  .success-screen h2 { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; margin-bottom:10px; }
+  .success-screen p  { font-size:13px; color:var(--muted); line-height:1.7; max-width:380px; margin:0 auto 8px; }
+  .steps-list { text-align:left; max-width:340px; margin:24px auto 0; }
+  .step-item  {
+    display:flex; gap:12px; align-items:flex-start; padding:10px 0;
+    border-bottom:1px solid var(--border); font-size:12px; color:var(--muted);
+  }
+  .step-item:last-child { border-bottom:none; }
+  .step-item .sn { font-family:'Syne',sans-serif; font-weight:700; color:var(--accent); width:20px; flex-shrink:0; }
+
+  /* Loading spinner */
+  .spinner {
+    display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.3);
+    border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; margin-right:6px;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  @media(max-width:600px) {
+    header { padding:14px 16px; }
+    .hero  { padding:32px 16px 40px; }
+    .hero h1 { font-size:26px; }
+    .page  { padding:24px 16px 60px; }
+    .field-row, .field-row.thirds { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">DriftWatch</div>
+    <div class="logo-sub">APARTMENT PRICE TRACKER</div>
+  </div>
+  <a class="back-link" href="apartment-tracker.html">← Back to listings</a>
+</header>
+
+<div class="hero">
+  <h1>List your apartment<br><span>for free.</span></h1>
+  <p>Get your unit in front of renters who track market prices. No fees, no commissions — just honest exposure to serious tenants.</p>
+  <div class="trust-pills">
+    <div class="trust-pill">✓ Free to list</div>
+    <div class="trust-pill">✓ Reviewed within 24h</div>
+    <div class="trust-pill">✓ Email verified</div>
+    <div class="trust-pill">✓ No scam listings</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- Step indicator -->
+  <div class="steps" id="stepsBar">
+    <div class="step active" id="stepEl0"><div class="step-num">1</div>Contact</div>
+    <div class="step"        id="stepEl1"><div class="step-num">2</div>Property</div>
+    <div class="step"        id="stepEl2"><div class="step-num">3</div>Details</div>
+    <div class="step"        id="stepEl3"><div class="step-num">4</div>Review</div>
+  </div>
+
+  <!-- Section 0: Contact info -->
+  <div class="form-section active" id="sec0">
+    <div class="section-header">
+      <h2>Your contact info</h2>
+      <p>This is how renters will reach you. Your email is used to verify the listing — it won't be shown publicly.</p>
+    </div>
+    <div class="field-row solo">
+      <div class="field" id="f-name">
+        <label>Full name <span class="req">*</span></label>
+        <input type="text" id="landlord_name" placeholder="Jane Smith">
+        <span class="err-msg">Please enter your full name</span>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="f-email">
+        <label>Email address <span class="req">*</span></label>
+        <input type="email" id="landlord_email" placeholder="jane@email.com">
+        <span class="hint">A verification link will be sent here</span>
+        <span class="err-msg">Please enter a valid email address</span>
+      </div>
+      <div class="field" id="f-phone">
+        <label>Phone number <span class="req">*</span></label>
+        <input type="tel" id="landlord_phone" placeholder="(555) 000-0000">
+        <span class="hint">Shown to renters for inquiries</span>
+        <span class="err-msg">Please enter a valid phone number</span>
+      </div>
+    </div>
+    <div class="protection-box">
+      <div class="protection-icon">🔒</div>
+      <div class="protection-text">
+        <strong>Your privacy matters.</strong> Your email is never shown publicly and is only used to verify your listing. Your phone number is shared with interested renters only.
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="nextStep(0)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Section 1: Property address -->
+  <div class="form-section" id="sec1">
+    <div class="section-header">
+      <h2>Property address</h2>
+      <p>We verify all addresses to keep listings accurate. Make sure the address is complete and correct.</p>
+    </div>
+    <div class="field-row solo">
+      <div class="field" id="f-address">
+        <label>Street address <span class="req">*</span></label>
+        <input type="text" id="address" placeholder="540 Marlowe St" onblur="checkAddress()">
+        <div class="addr-status" id="addrStatus"></div>
+        <span class="err-msg">Please enter a valid street address</span>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="f-unit">
+        <label>Unit / Apt #</label>
+        <input type="text" id="unit" placeholder="Apt 3B">
+      </div>
+      <div class="field" id="f-neighborhood">
+        <label>Neighborhood</label>
+        <input type="text" id="neighborhood" placeholder="Downtown, Midtown...">
+      </div>
+    </div>
+    <div class="field-row thirds">
+      <div class="field" id="f-city">
+        <label>City <span class="req">*</span></label>
+        <input type="text" id="city" placeholder="Austin">
+        <span class="err-msg">Required</span>
+      </div>
+      <div class="field" id="f-state">
+        <label>State <span class="req">*</span></label>
+        <select id="state">
+          <option value="">Select...</option>
+          <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+          <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+          <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+          <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+          <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+          <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+          <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+          <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+          <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+          <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+          <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+          <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+          <option>WI</option><option>WY</option>
+        </select>
+        <span class="err-msg">Required</span>
+      </div>
+      <div class="field" id="f-zip">
+        <label>ZIP code <span class="req">*</span></label>
+        <input type="text" id="zip" placeholder="78701" maxlength="10">
+        <span class="err-msg">Required</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="prevStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="nextStep(1)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Section 2: Listing details -->
+  <div class="form-section" id="sec2">
+    <div class="section-header">
+      <h2>Listing details</h2>
+      <p>The more detail you provide, the more interest you'll get from serious renters.</p>
+    </div>
+
+    <!-- Bedrooms -->
+    <div class="field-row solo" style="margin-bottom:18px">
+      <div class="field" id="f-beds">
+        <label>Bedrooms <span class="req">*</span></label>
+        <div class="picker">
+          <input class="pick-opt" type="radio" name="beds" id="b0" value="0"><label class="pick-lbl" for="b0">Studio</label>
+          <input class="pick-opt" type="radio" name="beds" id="b1" value="1"><label class="pick-lbl" for="b1">1 BR</label>
+          <input class="pick-opt" type="radio" name="beds" id="b2" value="2"><label class="pick-lbl" for="b2">2 BR</label>
+          <input class="pick-opt" type="radio" name="beds" id="b3" value="3"><label class="pick-lbl" for="b3">3 BR</label>
+          <input class="pick-opt" type="radio" name="beds" id="b4" value="4"><label class="pick-lbl" for="b4">4+ BR</label>
+        </div>
+        <span class="err-msg">Please select bedroom count</span>
+      </div>
+    </div>
+
+    <!-- Bathrooms -->
+    <div class="field-row solo" style="margin-bottom:18px">
+      <div class="field" id="f-baths">
+        <label>Bathrooms <span class="req">*</span></label>
+        <div class="picker">
+          <input class="pick-opt" type="radio" name="baths" id="ba1" value="1"><label class="pick-lbl" for="ba1">1 BA</label>
+          <input class="pick-opt" type="radio" name="baths" id="ba15" value="1.5"><label class="pick-lbl" for="ba15">1.5 BA</label>
+          <input class="pick-opt" type="radio" name="baths" id="ba2" value="2"><label class="pick-lbl" for="ba2">2 BA</label>
+          <input class="pick-opt" type="radio" name="baths" id="ba3" value="3"><label class="pick-lbl" for="ba3">3+ BA</label>
+        </div>
+        <span class="err-msg">Please select bathroom count</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field" id="f-sqft">
+        <label>Square footage</label>
+        <input type="number" id="sqft" placeholder="850" min="100" max="10000">
+      </div>
+      <div class="field" id="f-avail">
+        <label>Available from</label>
+        <input type="date" id="available_date">
+      </div>
+    </div>
+
+    <!-- Price -->
+    <div class="field-row solo">
+      <div class="field" id="f-price">
+        <label>Monthly rent <span class="req">*</span></label>
+        <input type="number" id="price" placeholder="1850" min="100" max="50000" oninput="updatePrice()">
+        <span class="err-msg">Please enter a valid monthly rent ($100–$50,000)</span>
+      </div>
+    </div>
+    <div class="price-display" id="priceDisplay">
+      <div>
+        <div class="price-amount" id="priceAmt"></div>
+        <div class="price-label">per month</div>
+      </div>
+    </div>
+
+    <!-- Amenities -->
+    <div class="field-row solo" style="margin-top:18px">
+      <div class="field">
+        <label>Amenities</label>
+        <div class="amenity-grid">
+          <input class="amenity-check" type="checkbox" id="a1" value="Parking"><label class="amenity-label" for="a1">🚗 Parking</label>
+          <input class="amenity-check" type="checkbox" id="a2" value="Laundry in unit"><label class="amenity-label" for="a2">🧺 Laundry in unit</label>
+          <input class="amenity-check" type="checkbox" id="a3" value="Laundry in building"><label class="amenity-label" for="a3">🏢 Laundry in building</label>
+          <input class="amenity-check" type="checkbox" id="a4" value="Pets OK"><label class="amenity-label" for="a4">🐾 Pets OK</label>
+          <input class="amenity-check" type="checkbox" id="a5" value="Dishwasher"><label class="amenity-label" for="a5">🍽️ Dishwasher</label>
+          <input class="amenity-check" type="checkbox" id="a6" value="AC"><label class="amenity-label" for="a6">❄️ AC</label>
+          <input class="amenity-check" type="checkbox" id="a7" value="Gym"><label class="amenity-label" for="a7">💪 Gym</label>
+          <input class="amenity-check" type="checkbox" id="a8" value="Roof deck"><label class="amenity-label" for="a8">🌇 Roof deck</label>
+          <input class="amenity-check" type="checkbox" id="a9" value="Doorman"><label class="amenity-label" for="a9">🚪 Doorman</label>
+          <input class="amenity-check" type="checkbox" id="a10" value="Elevator"><label class="amenity-label" for="a10">🛗 Elevator</label>
+          <input class="amenity-check" type="checkbox" id="a11" value="Storage"><label class="amenity-label" for="a11">📦 Storage</label>
+          <input class="amenity-check" type="checkbox" id="a12" value="Balcony"><label class="amenity-label" for="a12">🌿 Balcony</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="field-row solo" style="margin-top:14px">
+      <div class="field">
+        <label>Description</label>
+        <textarea id="description" placeholder="Describe the apartment — natural light, neighborhood feel, recent renovations, nearby transit..."></textarea>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="prevStep(2)">← Back</button>
+      <button class="btn btn-primary" onclick="nextStep(2)">Review listing →</button>
+    </div>
+  </div>
+
+  <!-- Section 3: Review & submit -->
+  <div class="form-section" id="sec3">
+    <div class="section-header">
+      <h2>Review your listing</h2>
+      <p>Check everything looks right before submitting. We'll send a verification email to confirm.</p>
+    </div>
+
+    <div id="reviewContent" style="font-size:13px;line-height:2;color:var(--muted)"></div>
+
+    <div class="protection-box" style="margin-top:20px">
+      <div class="protection-icon">🛡️</div>
+      <div class="protection-text">
+        <strong>How we protect renters:</strong> Every listing is email-verified and manually reviewed before going live. Suspicious pricing or unverifiable addresses are flagged automatically. You can report listings that seem fraudulent.
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="prevStep(3)">← Edit</button>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">
+        Submit listing →
+      </button>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">📬</div>
+    <h2>Check your email!</h2>
+    <p>We sent a verification link to <strong id="successEmail"></strong>.</p>
+    <p>Click it to confirm your listing — it expires in 24 hours.</p>
+    <div class="steps-list">
+      <div class="step-item"><div class="sn">1</div><div>Click the link in your email to verify</div></div>
+      <div class="step-item"><div class="sn">2</div><div>Our team reviews your listing (within 24h)</div></div>
+      <div class="step-item"><div class="sn">3</div><div>Your listing goes live on DriftWatch</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:8001';
+let currentStep = 0;
+let addrVerified = null;
+let addrTimer = null;
+
+// ── Navigation ─────────────────────────────────────────────────
+function nextStep(from) {
+  if (!validateStep(from)) return;
+  if (from === 2) buildReview();
+  goTo(from + 1);
+}
+function prevStep(from) { goTo(from - 1); }
+
+function goTo(n) {
+  document.getElementById('sec' + currentStep).classList.remove('active');
+  document.getElementById('stepEl' + currentStep).classList.remove('active');
+  document.getElementById('stepEl' + currentStep).classList.add('done');
+  if (n < currentStep) {
+    // going back — un-done future steps
+    for (let i = n; i <= currentStep; i++) {
+      document.getElementById('stepEl' + i).classList.remove('done','active');
+    }
+    document.getElementById('stepEl' + n).classList.add('active');
+  }
+  currentStep = n;
+  document.getElementById('sec' + n).classList.add('active');
+  document.getElementById('stepEl' + n).classList.remove('done');
+  document.getElementById('stepEl' + n).classList.add('active');
+  window.scrollTo({top: 0, behavior:'smooth'});
+}
+
+// ── Validation ─────────────────────────────────────────────────
+function validateStep(step) {
+  let ok = true;
+
+  const req = (id, fieldId, test) => {
+    const val = document.getElementById(id)?.value?.trim();
+    const fld = document.getElementById(fieldId || 'f-'+id);
+    if (!val || (test && !test(val))) {
+      fld?.classList.add('has-error'); ok = false;
+    } else {
+      fld?.classList.remove('has-error');
+    }
+    return val;
+  };
+
+  if (step === 0) {
+    req('landlord_name', 'f-name', v => v.length > 1);
+    req('landlord_email', 'f-email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+    req('landlord_phone', 'f-phone', v => v.replace(/\D/g,'').length >= 10);
+  }
+
+  if (step === 1) {
+    req('address', 'f-address', v => v.length > 3);
+    req('city',    'f-city',    v => v.length > 1);
+    req('zip',     'f-zip',     v => v.length >= 5);
+    const state = document.getElementById('state').value;
+    if (!state) { document.getElementById('f-state').classList.add('has-error'); ok = false; }
+    else document.getElementById('f-state').classList.remove('has-error');
+  }
+
+  if (step === 2) {
+    const beds  = document.querySelector('input[name="beds"]:checked');
+    const baths = document.querySelector('input[name="baths"]:checked');
+    if (!beds)  { document.getElementById('f-beds').classList.add('has-error');  ok = false; }
+    else        document.getElementById('f-beds').classList.remove('has-error');
+    if (!baths) { document.getElementById('f-baths').classList.add('has-error'); ok = false; }
+    else        document.getElementById('f-baths').classList.remove('has-error');
+    const price = parseInt(document.getElementById('price').value);
+    if (!price || price < 100 || price > 50000) {
+      document.getElementById('f-price').classList.add('has-error'); ok = false;
+    } else document.getElementById('f-price').classList.remove('has-error');
+  }
+
+  return ok;
+}
+
+// ── Address check ──────────────────────────────────────────────
+async function checkAddress() {
+  const addr  = document.getElementById('address').value.trim();
+  const city  = document.getElementById('city').value.trim();
+  const state = document.getElementById('state').value;
+  const zip   = document.getElementById('zip').value.trim();
+  const el    = document.getElementById('addrStatus');
+  if (!addr) return;
+
+  el.className = 'addr-status checking';
+  el.textContent = '⏳ Verifying address...';
+
+  try {
+    const q = encodeURIComponent(`${addr}, ${city} ${state} ${zip}`);
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+      headers: {'User-Agent': 'DriftWatch/1.0'}
+    });
+    const data = await r.json();
+    if (data.length) {
+      el.className = 'addr-status ok';
+      el.textContent = '✓ Address verified';
+      addrVerified = true;
+    } else {
+      el.className = 'addr-status bad';
+      el.textContent = '⚠ Address could not be verified — double check it';
+      addrVerified = false;
+    }
+  } catch(e) {
+    el.className = 'addr-status checking';
+    el.textContent = 'Could not verify address right now';
+  }
+}
+
+// ── Price display ──────────────────────────────────────────────
+function updatePrice() {
+  const val = parseInt(document.getElementById('price').value);
+  const disp = document.getElementById('priceDisplay');
+  if (val && val >= 100 && val <= 50000) {
+    disp.classList.add('show');
+    document.getElementById('priceAmt').textContent = '$' + val.toLocaleString();
+  } else {
+    disp.classList.remove('show');
+  }
+}
+
+// ── Review summary ─────────────────────────────────────────────
+function buildReview() {
+  const beds  = document.querySelector('input[name="beds"]:checked')?.value;
+  const baths = document.querySelector('input[name="baths"]:checked')?.value;
+  const amenities = [...document.querySelectorAll('.amenity-check:checked')].map(c=>c.value).join(', ');
+  const price = parseInt(document.getElementById('price').value);
+
+  const rows = [
+    ['Name',       document.getElementById('landlord_name').value],
+    ['Email',      document.getElementById('landlord_email').value],
+    ['Phone',      document.getElementById('landlord_phone').value],
+    ['Address',    [document.getElementById('address').value, document.getElementById('unit').value].filter(Boolean).join(', ')],
+    ['City/State', [document.getElementById('city').value, document.getElementById('state').value, document.getElementById('zip').value].join(', ')],
+    ['Bedrooms',   beds == 0 ? 'Studio' : beds + ' BR'],
+    ['Bathrooms',  baths + ' BA'],
+    ['Sqft',       document.getElementById('sqft').value || '—'],
+    ['Monthly Rent', '$' + price.toLocaleString()],
+    ['Amenities',  amenities || '—'],
+  ];
+
+  document.getElementById('reviewContent').innerHTML = rows.map(([k,v]) =>
+    `<div style="display:flex;gap:16px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="width:110px;flex-shrink:0;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;padding-top:2px">${k}</span>
+      <span style="color:var(--text);font-weight:500">${v}</span>
+    </div>`).join('');
+}
+
+// ── Submit ─────────────────────────────────────────────────────
+async function submitForm() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting...';
+
+  const beds  = document.querySelector('input[name="beds"]:checked')?.value;
+  const baths = document.querySelector('input[name="baths"]:checked')?.value;
+  const amenities = [...document.querySelectorAll('.amenity-check:checked')].map(c=>c.value);
+
+  const payload = {
+    landlord_name:  document.getElementById('landlord_name').value.trim(),
+    landlord_email: document.getElementById('landlord_email').value.trim(),
+    landlord_phone: document.getElementById('landlord_phone').value.trim(),
+    address:        document.getElementById('address').value.trim(),
+    unit:           document.getElementById('unit').value.trim() || null,
+    city:           document.getElementById('city').value.trim(),
+    state:          document.getElementById('state').value,
+    zip:            document.getElementById('zip').value.trim(),
+    neighborhood:   document.getElementById('neighborhood').value.trim() || null,
+    bedrooms:       parseFloat(beds),
+    bathrooms:      parseFloat(baths),
+    sqft:           parseInt(document.getElementById('sqft').value) || null,
+    price:          parseInt(document.getElementById('price').value),
+    available_date: document.getElementById('available_date').value || null,
+    amenities,
+    description:    document.getElementById('description').value.trim() || null,
+  };
+
+  try {
+    const r = await fetch(`${API}/submit`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Submission failed');
+
+    // Show success
+    document.getElementById('sec3').classList.remove('active');
+    document.getElementById('stepsBar').style.display = 'none';
+    document.getElementById('successEmail').textContent = payload.landlord_email;
+    document.getElementById('successScreen').classList.add('show');
+    window.scrollTo({top:0,behavior:'smooth'});
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = 'Submit listing →';
+    alert('Error: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

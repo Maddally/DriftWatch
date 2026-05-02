@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — DriftWatch Review Queue</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0c0c0f; --surface:#141418; --surface2:#1c1c22; --border:#2a2a35;
+    --drop:#00e8a2; --rise:#ff4d6d; --text:#e8e8f0; --muted:#7070a0; --accent:#7b61ff;
+    --warn:#f59e0b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh}
+
+  /* Login */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:40px;width:100%;max-width:360px}
+  .login-box h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:4px}
+  .login-box p{font-size:11px;color:var(--muted);margin-bottom:28px}
+  .lf{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .lf label{font-size:11px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase}
+  .lf input{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:10px 12px;border-radius:7px;outline:none;transition:border-color 0.2s}
+  .lf input:focus{border-color:var(--accent)}
+  .login-btn{width:100%;background:var(--accent);color:#fff;border:none;font-family:'DM Mono',monospace;font-size:13px;padding:11px;border-radius:7px;cursor:pointer;transition:opacity 0.2s;margin-top:8px}
+  .login-btn:hover{opacity:0.85}
+  .login-err{font-size:11px;color:var(--rise);margin-top:8px;display:none}
+
+  /* App shell */
+  .app{display:none}
+  .app.show{display:block}
+
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px}
+  .logo span{color:var(--accent)}
+  .admin-tag{font-size:10px;background:rgba(123,97,255,0.15);color:var(--accent);padding:3px 8px;border-radius:4px;border:1px solid rgba(123,97,255,0.3);margin-left:10px}
+  .logout-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:5px 12px;border-radius:5px;cursor:pointer;transition:all 0.2s}
+  .logout-btn:hover{color:var(--rise);border-color:var(--rise)}
+
+  .main{max-width:1000px;margin:0 auto;padding:32px 24px}
+
+  /* Stats */
+  .stat-row{display:flex;gap:12px;margin-bottom:32px;flex-wrap:wrap}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;flex:1;min-width:120px}
+  .stat-card .sv{font-family:'Syne',sans-serif;font-size:28px;font-weight:800}
+  .stat-card .sl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+  .stat-card.pending-c .sv{color:var(--warn)}
+  .stat-card.approved-c .sv{color:var(--drop)}
+  .stat-card.rejected-c .sv{color:var(--muted)}
+  .stat-card.spam-c .sv{color:var(--rise)}
+
+  /* Queue */
+  .section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+  .empty{text-align:center;padding:60px;color:var(--muted);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+  .empty .ei{font-size:36px;margin-bottom:12px}
+
+  .sub-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;transition:border-color 0.2s}
+  .sub-card.flagged{border-color:rgba(245,158,11,0.3)}
+  .sub-card:hover{border-color:rgba(123,97,255,0.3)}
+
+  .sub-head{padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer}
+  .sub-addr{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:3px}
+  .sub-meta{font-size:11px;color:var(--muted)}
+  .sub-price{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text);flex-shrink:0}
+
+  .flag-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(245,158,11,0.15);color:var(--warn);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:3px 8px;font-size:10px;margin-top:4px}
+
+  .sub-body{padding:0 18px 18px;display:none;border-top:1px solid var(--border);margin-top:0}
+  .sub-body.open{display:block}
+
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+  .detail-item{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 12px}
+  .di-label{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+  .di-val{font-size:13px;color:var(--text)}
+
+  .action-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .act-btn{font-family:'DM Mono',monospace;font-size:12px;padding:8px 18px;border-radius:7px;border:none;cursor:pointer;transition:all 0.2s}
+  .approve-btn{background:rgba(0,232,162,0.15);color:var(--drop);border:1px solid rgba(0,232,162,0.3)}
+  .approve-btn:hover{background:rgba(0,232,162,0.25)}
+  .reject-btn{background:rgba(255,77,109,0.1);color:var(--rise);border:1px solid rgba(255,77,109,0.2)}
+  .reject-btn:hover{background:rgba(255,77,109,0.2)}
+  .spam-btn{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+  .spam-btn:hover{color:var(--rise);border-color:var(--rise)}
+  .done-badge{font-size:11px;padding:6px 12px;border-radius:6px}
+  .done-badge.approved{background:rgba(0,232,162,0.1);color:var(--drop)}
+  .done-badge.rejected{background:rgba(255,77,109,0.1);color:var(--rise)}
+  .done-badge.spam{background:var(--surface2);color:var(--muted)}
+
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all 0.2s}
+  .refresh-btn:hover{color:var(--text)}
+
+  @media(max-width:600px){
+    header{padding:0 16px}
+    .main{padding:20px 16px}
+    .detail-grid{grid-template-columns:1fr}
+    .stat-row{gap:8px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <h1>Admin Login</h1>
+    <p>DriftWatch review queue</p>
+    <div class="lf"><label>Email</label><input type="email" id="adminEmail" placeholder="admin@example.com"></div>
+    <div class="lf"><label>Password</label><input type="password" id="adminPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"></div>
+    <button class="login-btn" onclick="login()">Sign in →</button>
+    <div class="login-err" id="loginErr">Invalid credentials</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:16px;line-height:1.7">
+      First time? Create an admin account:<br>
+      <code style="color:var(--accent)">python create_admin.py your@email.com password</code>
+    </div>
+  </div>
+</div>
+
+<!-- App -->
+<div class="app" id="app">
+  <header>
+    <div style="display:flex;align-items:center">
+      <div class="logo">Drift<span>Watch</span></div>
+      <div class="admin-tag">ADMIN</div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </header>
+
+  <div class="main">
+    <!-- Stats -->
+    <div class="stat-row" id="statRow">
+      <div class="stat-card pending-c"><div class="sv" id="stAwait">—</div><div class="sl">Awaiting review</div></div>
+      <div class="stat-card approved-c"><div class="sv" id="stApproved">—</div><div class="sl">Approved</div></div>
+      <div class="stat-card rejected-c"><div class="sv" id="stRejected">—</div><div class="sl">Rejected</div></div>
+      <div class="stat-card spam-c"><div class="sv" id="stSpam">—</div><div class="sl">Marked spam</div></div>
+    </div>
+
+    <div class="section-title">
+      Review queue
+      <button class="refresh-btn" onclick="loadQueue()" style="font-family:'DM Mono';letter-spacing:0">↻ Refresh</button>
+    </div>
+
+    <div id="queue"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8001';
+let token = localStorage.getItem('dw_admin_token');
+
+// ── Auth ────────────────────────────────────────────────────────
+async function login() {
+  const email = document.getElementById('adminEmail').value;
+  const pass  = document.getElementById('adminPass').value;
+  try {
+    const r = await fetch(`${API}/admin/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password:pass})
+    });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    token = data.token;
+    localStorage.setItem('dw_admin_token', token);
+    showApp();
+  } catch {
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('dw_admin_token');
+  token = null;
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('loginWrap').style.display = 'flex';
+}
+
+function authHeaders() {
+  return {'Authorization': 'Bearer '+token, 'Content-Type':'application/json'};
+}
+
+async function showApp() {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  await loadStats();
+  await loadQueue();
+}
+
+// ── Stats ───────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/admin/stats`, {headers: authHeaders()});
+    const s = await r.json();
+    document.getElementById('stAwait').textContent    = s.awaiting_review ?? 0;
+    document.getElementById('stApproved').textContent = s.approved ?? 0;
+    document.getElementById('stRejected').textContent = s.rejected ?? 0;
+    document.getElementById('stSpam').textContent     = s.spam ?? 0;
+  } catch(e) { console.warn('Stats:', e); }
+}
+
+// ── Queue ───────────────────────────────────────────────────────
+async function loadQueue() {
+  const el = document.getElementById('queue');
+  el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px 0">Loading...</div>';
+  try {
+    const r = await fetch(`${API}/admin/queue`, {headers: authHeaders()});
+    if (r.status === 401) { logout(); return; }
+    const data = await r.json();
+    if (!data.submissions.length) {
+      el.innerHTML = `<div class="empty"><div class="ei">✅</div>Queue is empty — no listings awaiting review</div>`;
+      return;
+    }
+    el.innerHTML = data.submissions.map(s => subCard(s)).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><div class="ei">⚡</div>Could not load queue: ${e.message}</div>`;
+  }
+}
+
+function subCard(s) {
+  const flagged  = s.price_flagged || s.address_valid === false;
+  const flagText = s.auto_flag_reason ? `<div class="flag-badge">⚠ ${s.auto_flag_reason}</div>` : '';
+  const beds = s.bedrooms === 0 ? 'Studio' : s.bedrooms + ' BR';
+  const amenities = (s.amenities||[]).join(', ') || '—';
+  const submitted = new Date(s.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  return `
+  <div class="sub-card ${flagged?'flagged':''}" id="card-${s.id}">
+    <div class="sub-head" onclick="toggleCard(${s.id})">
+      <div>
+        <div class="sub-addr">${esc(s.address)}${s.unit?' '+esc(s.unit):''}</div>
+        <div class="sub-meta">${esc(s.city)}, ${s.state} · ${beds}/${s.bathrooms} BA${s.sqft?' · '+s.sqft+' sqft':''} · ${submitted}</div>
+        ${flagText}
+      </div>
+      <div class="sub-price">$${s.price.toLocaleString()}/mo</div>
+    </div>
+    <div class="sub-body" id="body-${s.id}">
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-label">Landlord</div><div class="di-val">${esc(s.landlord_name)}</div></div>
+        <div class="detail-item"><div class="di-label">Email</div><div class="di-val">${esc(s.landlord_email)}</div></div>
+        <div class="detail-item"><div class="di-label">Phone</div><div class="di-val">${esc(s.landlord_phone)}</div></div>
+        <div class="detail-item"><div class="di-label">Address verified</div><div class="di-val" style="color:${s.address_valid?'var(--drop)':'var(--rise)'}">${s.address_valid===true?'✓ Yes':s.address_valid===false?'✗ No':'Unknown'}</div></div>
+        <div class="detail-item"><div class="di-label">Available</div><div class="di-val">${s.available_date||'—'}</div></div>
+        <div class="detail-item"><div class="di-label">Neighborhood</div><div class="di-val">${s.neighborhood||'—'}</div></div>
+        <div class="detail-item" style="grid-column:1/-1"><div class="di-label">Amenities</div><div class="di-val">${amenities}</div></div>
+        ${s.description?`<div class="detail-item" style="grid-column:1/-1"><div class="di-label">Description</div><div class="di-val" style="white-space:pre-wrap;line-height:1.6;font-size:12px">${esc(s.description)}</div></div>`:''}
+      </div>
+      <div class="action-row" id="actions-${s.id}">
+        <button class="act-btn approve-btn" onclick="act('approve',${s.id})">✓ Approve & publish</button>
+        <button class="act-btn reject-btn"  onclick="act('reject',${s.id})">✗ Reject</button>
+        <button class="act-btn spam-btn"    onclick="act('spam',${s.id})">🚫 Mark spam</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id) {
+  document.getElementById('body-'+id).classList.toggle('open');
+}
+
+async function act(action, id) {
+  const actEl = document.getElementById('actions-'+id);
+  actEl.innerHTML = '<span style="color:var(--muted);font-size:12px">Processing...</span>';
+  try {
+    let reason = '';
+    if (action === 'reject') {
+      reason = prompt('Reason for rejection (optional):') || 'Does not meet listing requirements';
+    }
+    const url = `${API}/admin/${action}/${id}${action==='reject'?'?reason='+encodeURIComponent(reason):''}`;
+    const r = await fetch(url, {method:'POST', headers: authHeaders()});
+    if (!r.ok) throw new Error(await r.text());
+
+    const label = action==='approve'?'✓ Approved':action==='reject'?'✗ Rejected':'🚫 Spam';
+    actEl.innerHTML = `<span class="done-badge ${action}">${label}</span>`;
+    await loadStats();
+  } catch(e) {
+    actEl.innerHTML = `<span style="color:var(--rise);font-size:12px">Error: ${e.message}</span>`;
+  }
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Boot ────────────────────────────────────────────────────────
+if (token) showApp();
+</script>
+</body>
+</html>
