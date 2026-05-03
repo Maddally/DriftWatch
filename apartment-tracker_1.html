@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DriftWatch — Apartment Price Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --border: #2a2a35;
+    --drop: #00e8a2;
+    --rise: #ff4d6d;
+    --neutral: #5a5a72;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --accent: #7b61ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; min-height: 100vh; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(123,97,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(123,97,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(12,12,15,0.9); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; flex-shrink: 0; }
+  .logo span { color: var(--accent); }
+
+  .header-search {
+    flex: 1; max-width: 320px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0 12px; height: 38px; transition: border-color 0.2s;
+  }
+  .header-search:focus-within { border-color: var(--accent); }
+  .header-search input {
+    background: none; border: none; outline: none;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; width: 100%;
+  }
+  .header-search input::placeholder { color: var(--muted); }
+
+  .stats-bar {
+    display: flex; gap: 2px; padding: 2px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 11px; flex-shrink: 0;
+  }
+  .stat-pill { padding: 5px 12px; border-radius: 8px; display: flex; align-items: center; gap: 6px; }
+  .stat-pill.drop { background: rgba(0,232,162,0.1); color: var(--drop); }
+  .stat-pill.rise { background: rgba(255,77,109,0.1); color: var(--rise); }
+  .stat-pill.none { color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot.drop { background: var(--drop); box-shadow: 0 0 6px var(--drop); }
+  .dot.rise { background: var(--rise); box-shadow: 0 0 6px var(--rise); }
+  .dot.none { background: var(--neutral); }
+
+  /* Config bar */
+  .config-banner {
+    background: linear-gradient(135deg, rgba(123,97,255,0.07), rgba(0,232,162,0.04));
+    border-bottom: 1px solid rgba(123,97,255,0.15);
+    padding: 10px 32px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 11px; color: var(--muted); position: relative; z-index: 1;
+  }
+  .config-label { color: var(--accent); letter-spacing: 1px; text-transform: uppercase; font-size: 10px; }
+  .config-input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 10px;
+    border-radius: 4px; outline: none; width: 240px; transition: border-color 0.2s;
+  }
+  .config-input:focus { border-color: var(--accent); }
+  .config-btn {
+    background: var(--accent); color: #fff; border: none;
+    font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 14px;
+    border-radius: 4px; cursor: pointer; transition: opacity 0.2s;
+  }
+  .config-btn:hover { opacity: 0.85; }
+  .api-status { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .api-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neutral); }
+  .api-dot.connected { background: var(--drop); box-shadow: 0 0 6px var(--drop); }
+  .api-dot.error { background: var(--rise); }
+  .api-dot.loading { background: var(--accent); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--muted); letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Timeline */
+  .timeline { display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; padding-bottom: 4px; }
+  .week-chip {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border);
+    font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.2s;
+    background: var(--surface2); white-space: nowrap;
+  }
+  .week-chip:hover { color: var(--text); border-color: var(--accent); }
+  .week-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .week-chip.has-drops { border-color: rgba(0,232,162,0.3); }
+  .chip-drops { font-size: 9px; color: var(--drop); margin-left: 4px; }
+
+  /* Alert */
+  .alert-banner {
+    background: linear-gradient(135deg, rgba(0,232,162,0.06), rgba(123,97,255,0.06));
+    border: 1px solid rgba(0,232,162,0.15); border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 16px;
+  }
+  .alert-icon { font-size: 22px; }
+  .alert-text { font-size: 13px; }
+  .alert-text strong { color: var(--drop); font-family: 'Syne', sans-serif; }
+  .alert-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; align-items: center; }
+  .filter-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+    font-family: 'DM Mono', monospace; font-size: 12px; padding: 7px 16px;
+    border-radius: 6px; cursor: pointer; transition: all 0.2s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { background: rgba(123,97,255,0.15); border-color: var(--accent); color: var(--accent); }
+  .filter-btn.df.active { background: rgba(0,232,162,0.1); border-color: var(--drop); color: var(--drop); }
+  .filter-btn.rf.active { background: rgba(255,77,109,0.1); border-color: var(--rise); color: var(--rise); }
+  .sort-select {
+    margin-left: auto; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 7px 12px; border-radius: 6px; outline: none; cursor: pointer;
+  }
+
+  /* Cards */
+  .listings { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer; animation: fadeUp 0.35s ease both;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+  .card.dc { border-color: rgba(0,232,162,0.2); }
+  .card.dc:hover { border-color: var(--drop); box-shadow: 0 12px 40px rgba(0,232,162,0.1); }
+  .card.rc { border-color: rgba(255,77,109,0.2); }
+  .card.rc:hover { border-color: var(--rise); box-shadow: 0 12px 40px rgba(255,77,109,0.1); }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .card-thumb {
+    width: 100%; height: 148px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 42px; position: relative;
+  }
+  .t0{background:linear-gradient(135deg,#1a1a2e,#16213e)}
+  .t1{background:linear-gradient(135deg,#1e1a2e,#2a1a1e)}
+  .t2{background:linear-gradient(135deg,#1a2e1a,#162116)}
+  .t3{background:linear-gradient(135deg,#2e2a1a,#211e16)}
+  .t4{background:linear-gradient(135deg,#1a2e2e,#162121)}
+  .t5{background:linear-gradient(135deg,#2e1a2e,#211621)}
+
+  .badge {
+    position: absolute; top: 10px; right: 10px; padding: 4px 9px;
+    border-radius: 5px; font-size: 11px; backdrop-filter: blur(8px);
+  }
+  .badge.d{background:rgba(0,232,162,0.18);color:var(--drop);border:1px solid rgba(0,232,162,0.3)}
+  .badge.r{background:rgba(255,77,109,0.18);color:var(--rise);border:1px solid rgba(255,77,109,0.3)}
+  .badge.n{background:rgba(123,97,255,0.18);color:var(--accent);border:1px solid rgba(123,97,255,0.3)}
+
+  .card-body { padding: 15px; }
+  .card-addr { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card-loc { font-size:10px; color:var(--muted); margin-bottom:12px; letter-spacing:0.5px; text-transform:uppercase; }
+  .card-meta { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .mtag { background:var(--surface2); padding:3px 7px; border-radius:4px; border:1px solid var(--border); font-size:10px; color:var(--muted); }
+  .price-row { display:flex; align-items:flex-end; justify-content:space-between; }
+  .price-cur { font-family:'Syne',sans-serif; font-size:21px; font-weight:800; }
+  .price-hist { text-align:right; }
+  .price-old { font-size:11px; color:var(--muted); text-decoration:line-through; display:block; }
+  .pdelta { font-size:13px; font-weight:500; }
+  .pdelta.d { color:var(--drop); } .pdelta.r { color:var(--rise); } .pdelta.n { color:var(--muted); font-size:10px; }
+  .spark-row { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+  .spark-lbl { font-size:9px; color:var(--muted); letter-spacing:0.8px; margin-bottom:5px; text-transform:uppercase; }
+  .spark { width:100%; height:30px; }
+
+  /* Skeleton */
+  .skel { background:var(--surface); border:1px solid var(--border); border-radius:12px; height:280px; position:relative; overflow:hidden; }
+  .skel::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent);
+    background-size:200% 100%; animation:sweep 1.5s infinite;
+  }
+  @keyframes sweep { from{background-position:-200% 0} to{background-position:200% 0} }
+
+  /* State boxes */
+  .state-box { text-align:center; padding:80px 20px; color:var(--muted); font-size:13px; grid-column:1/-1; }
+  .state-box .si { font-size:40px; margin-bottom:16px; }
+  .state-box .st { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px; }
+  .state-box .sh { font-size:11px; line-height:1.7; }
+  .state-box code { color:var(--accent); background:var(--surface2); padding:2px 6px; border-radius:3px; }
+
+  /* Modal */
+  .modal-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.75); backdrop-filter:blur(10px);
+    z-index:200; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    width:100%; max-width:540px; max-height:88vh; overflow-y:auto;
+    animation:mIn 0.22s ease;
+  }
+  @keyframes mIn { from{opacity:0;transform:scale(0.95) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  .mhdr { padding:22px 22px 0; display:flex; justify-content:space-between; align-items:flex-start; }
+  .mclose {
+    background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+    font-size:16px; width:30px; height:30px; border-radius:6px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0;
+  }
+  .mclose:hover { color:var(--text); }
+  .mbody { padding:20px 22px 22px; }
+  .maddr { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; margin-bottom:3px; }
+  .msub  { font-size:11px; color:var(--muted); margin-bottom:18px; }
+  .mload { text-align:center; padding:40px; color:var(--muted); font-size:12px; }
+  .phc { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px; }
+  .phc-ttl { font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
+  .phc-svg { width:100%; height:80px; }
+  .clog { display:flex; flex-direction:column; gap:6px; }
+  .clog-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 13px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:7px; font-size:12px;
+  }
+  .clog-wk { color:var(--muted); }
+  .clog-pr { font-family:'Syne',sans-serif; font-weight:700; }
+  .clog-ch { font-size:11px; }
+  .clog-ch.d{color:var(--drop)} .clog-ch.r{color:var(--rise)} .clog-ch.s{color:var(--neutral)}
+  .mlink {
+    display:inline-flex; align-items:center; gap:6px; margin-top:14px;
+    font-size:11px; color:var(--accent); text-decoration:none;
+    border:1px solid rgba(123,97,255,0.3); padding:6px 12px; border-radius:6px;
+    background:rgba(123,97,255,0.08); transition:background 0.2s;
+  }
+  .mlink:hover { background:rgba(123,97,255,0.15); }
+
+  @media(max-width:600px) {
+    header { padding:0 16px; }
+    .header-search,.stats-bar { display:none; }
+    .main { padding:24px 16px; }
+    .config-banner { padding:10px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Drift<span>Watch</span></div>
+  <div class="header-search">
+    <span style="color:var(--muted);font-size:14px">⌕</span>
+    <input type="text" id="citySearch" placeholder="Filter by city or neighborhood..." oninput="onSearch(this.value)">
+  </div>
+  <div class="stats-bar">
+    <div class="stat-pill drop"><div class="dot drop"></div><span id="sDrops">—</span> dropped</div>
+    <div class="stat-pill rise"><div class="dot rise"></div><span id="sRises">—</span> raised</div>
+    <div class="stat-pill none"><div class="dot none"></div><span id="sNew">—</span> new</div>
+  </div>
+</header>
+
+<div class="config-banner">
+  <span class="config-label">API URL</span>
+  <input class="config-input" id="apiUrl" type="text" value="http://localhost:8000" placeholder="http://localhost:8000">
+  <button class="config-btn" onclick="connectApi()">Connect</button>
+  <div class="api-status">
+    <div class="api-dot" id="apiDot"></div>
+    <span id="apiLabel" style="color:var(--muted)">Not connected — showing demo data</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="timeline" id="timeline">
+    <div class="week-chip" style="border-style:dashed;color:var(--muted)">Loading...</div>
+  </div>
+
+  <div class="alert-banner" id="alertBanner" style="display:none">
+    <div class="alert-icon">📉</div>
+    <div>
+      <div class="alert-text" id="alertTxt"></div>
+      <div class="alert-sub" id="alertSub"></div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All changes</button>
+    <button class="filter-btn df" onclick="setFilter('drop',this)">↓ Price drops</button>
+    <button class="filter-btn rf" onclick="setFilter('rise',this)">↑ Price raises</button>
+    <button class="filter-btn" onclick="setFilter('new',this)">✦ New listings</button>
+    <select class="sort-select" id="sortSel" onchange="renderCards()">
+      <option value="delta">Biggest change</option>
+      <option value="pct">% change</option>
+      <option value="price_asc">Price low→high</option>
+      <option value="price_desc">Price high→low</option>
+    </select>
+  </div>
+
+  <div class="section-title" id="secTitle">This week's changes</div>
+  <div class="listings" id="listings">
+    <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="mhdr">
+      <div>
+        <div class="maddr" id="mAddr"></div>
+        <div class="msub"  id="mSub"></div>
+      </div>
+      <button class="mclose" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mbody" id="mBody"><div class="mload">Loading...</div></div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let API    = 'https://driftwatch-production-80e5.up.railway.app';
+let data   = [];
+let filter = 'all';
+let curWeek = null;
+let searchQ = '';
+let timer   = null;
+const ICONS = ['🏢','🏙️','🌿','🏠','🌊','🏗️','🏛️','🌆'];
+
+// ── Fetch helpers ──────────────────────────────────────────────
+async function get(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+  return r.json();
+}
+
+function apiStatus(state, txt) {
+  document.getElementById('apiDot').className = 'api-dot ' + state;
+  const lbl = document.getElementById('apiLabel');
+  lbl.textContent = txt;
+  lbl.style.color = state==='connected' ? 'var(--drop)' : state==='error' ? 'var(--rise)' : 'var(--muted)';
+}
+
+// ── Connect ────────────────────────────────────────────────────
+async function connectApi() {
+  API = document.getElementById('apiUrl').value.replace(/\/$/,'');
+  apiStatus('loading','Connecting...');
+  try {
+    await get('/health');
+    apiStatus('connected','Connected ✓');
+    await bootFromApi();
+  } catch(e) {
+    apiStatus('error','API unreachable — showing demo data');
+    loadDemo();
+  }
+}
+
+async function bootFromApi() {
+  await loadTimeline();
+  await loadWeek(curWeek);
+}
+
+// ── Timeline ───────────────────────────────────────────────────
+async function loadTimeline() {
+  try {
+    const weeks = await get('/weeks?limit=12');
+    const el = document.getElementById('timeline');
+    if (!weeks.length) {
+      el.innerHTML = '<div class="week-chip" style="border-style:dashed">No data yet — run scraper first</div>';
+      return;
+    }
+    curWeek = weeks[0].to_week;
+    el.innerHTML = weeks.map((w,i) => `
+      <div class="week-chip ${i===0?'active':''} ${w.drops>0?'has-drops':''}"
+           onclick="selectWeek('${w.to_week}',this)">
+        ${fmt(w.to_week)}${w.drops>0?`<span class="chip-drops">↓${w.drops}</span>`:''}
+      </div>`).join('');
+  } catch(e) { console.warn('Timeline:', e); }
+}
+
+async function selectWeek(week, el) {
+  curWeek = week;
+  document.querySelectorAll('.week-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  await loadWeek(week);
+}
+
+// ── Load week data ─────────────────────────────────────────────
+async function loadWeek(week) {
+  showSkeletons();
+  try {
+    const p = new URLSearchParams({limit:200});
+    if (week)   p.set('week', week);
+    if (searchQ) p.set('city', searchQ);
+
+    const [chRes, stRes] = await Promise.all([
+      get('/changes?' + p),
+      get('/stats'  + (week?'?week='+week:''))
+    ]);
+
+    data = chRes.changes || [];
+    setStats(stRes);
+    setAlert(stRes);
+    document.getElementById('secTitle').textContent =
+      week ? 'Changes for week of ' + fmt(week) : "This week's changes";
+    renderCards();
+  } catch(e) { showErr(e); }
+}
+
+// ── Stats & alert ──────────────────────────────────────────────
+function setStats(s) {
+  document.getElementById('sDrops').textContent = s.drops    ?? '—';
+  document.getElementById('sRises').textContent = s.rises    ?? '—';
+  document.getElementById('sNew').textContent   = s.new_listings ?? '—';
+}
+
+function setAlert(s) {
+  const b = document.getElementById('alertBanner');
+  if (!s.drops) { b.style.display='none'; return; }
+  b.style.display = 'flex';
+  document.getElementById('alertTxt').innerHTML =
+    `<strong>${s.drops} listing${s.drops!==1?'s':''} dropped</strong> in price this week`;
+  const parts = [];
+  if (s.biggest_drop) parts.push(`Largest: $${Math.abs(s.biggest_drop)}/mo`);
+  if (s.avg_drop)     parts.push(`Avg drop: $${Math.abs(Math.round(s.avg_drop))}/mo`);
+  document.getElementById('alertSub').textContent = parts.join(' · ');
+}
+
+// ── Render cards ───────────────────────────────────────────────
+function renderCards() {
+  const sort = document.getElementById('sortSel').value;
+  let d = [...data];
+
+  if (filter==='drop') d = d.filter(c=>c.delta<0);
+  else if (filter==='rise') d = d.filter(c=>c.delta>0);
+  else if (filter==='new')  d = d.filter(c=>c.change_type==='new');
+
+  if (sort==='delta')      d.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  else if (sort==='pct')   d.sort((a,b)=>Math.abs(b.delta_pct)-Math.abs(a.delta_pct));
+  else if (sort==='price_asc')  d.sort((a,b)=>a.price_after-b.price_after);
+  else if (sort==='price_desc') d.sort((a,b)=>b.price_after-a.price_after);
+
+  const grid = document.getElementById('listings');
+  if (!d.length) {
+    grid.innerHTML = `<div class="state-box">
+      <div class="si">🔍</div>
+      <div class="st">No changes found</div>
+      <div class="sh">Try a different filter, week, or run <code>python scraper.py --run-now</code></div>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = d.map((c,i) => card(c,i)).join('');
+}
+
+function card(c, i) {
+  const isDrop = c.delta < 0, isRise = c.delta > 0, isNew = c.change_type==='new';
+  const cls = isDrop?'dc':isRise?'rc':'';
+  const dtype = isNew?'new':isDrop?'drop':isRise?'rise':'none';
+  const icon = ICONS[i%ICONS.length];
+  const bg = 't'+(i%6);
+  const delay = Math.min(i*0.04,0.4);
+
+  const bdg = isNew  ? `<div class="badge n">✦ NEW</div>`
+            : isDrop ? `<div class="badge d">↓ $${Math.abs(c.delta)}/mo</div>`
+            : isRise ? `<div class="badge r">↑ $${c.delta}/mo</div>` : '';
+
+  const pOld = (isDrop||isRise) ? `<span class="price-old">$${c.price_before.toLocaleString()}/mo</span>` : '';
+  const dtxt = isNew ? 'first listed'
+    : isDrop ? `▼ ${Math.abs(c.delta_pct)}%`
+    : isRise ? `▲ ${c.delta_pct}%` : 'unchanged';
+  const dcls = isDrop?'d':isRise?'r':'n';
+
+  const beds  = c.bedrooms!=null ? (c.bedrooms===0?'Studio':c.bedrooms+' BR') : null;
+  const baths = c.bathrooms!=null ? c.bathrooms+' BA' : null;
+  const sqft  = c.sqft ? c.sqft.toLocaleString()+' sqft' : null;
+  const tags  = [beds,baths,sqft].filter(Boolean).map(t=>`<span class="mtag">${t}</span>`).join('');
+
+  const lc = isDrop?'#00e8a2':isRise?'#ff4d6d':'#5a5a72';
+  const y1 = isDrop?8:isRise?24:16, y2 = isDrop?24:isRise?8:16;
+  const sparkSvg = (isDrop||isRise)
+    ? `<polyline points="0,${y1} 220,${y1} 280,${y2}" fill="none" stroke="${lc}" stroke-width="2"/>
+       <circle cx="280" cy="${y2}" r="3" fill="${lc}"/>`
+    : `<line x1="80" y1="15" x2="280" y2="15" stroke="${lc}" stroke-width="2" stroke-dasharray="5 3"/>
+       <circle cx="280" cy="15" r="3" fill="${lc}"/>`;
+
+  const addr = esc(c.address) + (c.unit?' '+esc(c.unit):'');
+  const loc  = esc([c.neighborhood,c.city,c.state].filter(Boolean).join(' · '));
+
+  return `<div class="card ${cls}" data-type="${dtype}"
+    onclick="openModal(${c.listing_id},'${esc(c.address+(c.unit?' '+c.unit:''))}','${loc}')"
+    style="animation-delay:${delay}s">
+    <div class="card-thumb ${bg}">${icon}${bdg}</div>
+    <div class="card-body">
+      <div class="card-addr">${addr}</div>
+      <div class="card-loc">${loc}</div>
+      <div class="card-meta">${tags}</div>
+      <div class="price-row">
+        <div class="price-cur">$${c.price_after.toLocaleString()}/mo</div>
+        <div class="price-hist">${pOld}<span class="pdelta ${dcls}">${dtxt}</span></div>
+      </div>
+      <div class="spark-row">
+        <div class="spark-lbl">Price trend</div>
+        <svg class="spark" viewBox="0 0 280 30" preserveAspectRatio="none">${sparkSvg}</svg>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Modal ──────────────────────────────────────────────────────
+async function openModal(id, addr, sub) {
+  document.getElementById('mAddr').textContent = addr;
+  document.getElementById('mSub').textContent  = sub;
+  document.getElementById('mBody').innerHTML   = '<div class="mload">Loading price history...</div>';
+  document.getElementById('modal').classList.add('open');
+  try {
+    const d = await get('/listings/'+id);
+    renderModal(d);
+  } catch(e) {
+    document.getElementById('mBody').innerHTML =
+      `<div class="mload" style="color:var(--rise)">Could not load: ${e.message}</div>`;
+  }
+}
+
+function renderModal(d) {
+  const hist = d.price_history || [];
+  const url  = hist[hist.length-1]?.source_url;
+
+  // Chart
+  let chartInner = '';
+  if (hist.length >= 2) {
+    const prices = hist.map(h=>h.price);
+    const mn = Math.min(...prices)-80, mx = Math.max(...prices)+80;
+    const W=480, H=78;
+    const pts = hist.map((h,i)=>{
+      const x = (i/(hist.length-1))*W;
+      const y = H-6-((h.price-mn)/(mx-mn))*(H-16);
+      return {x,y,p:h.price,w:h.week_start};
+    });
+    const lastChg = hist.length>1 ? hist[hist.length-1].price - hist[hist.length-2].price : 0;
+    const lc = lastChg<0?'#00e8a2':lastChg>0?'#ff4d6d':'#5a5a72';
+    let inner = `<polyline points="${pts.map(p=>p.x+','+p.y).join(' ')}" fill="none" stroke="${lc}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    pts.forEach((p,i)=>{
+      const chg = i>0 ? hist[i].price-hist[i-1].price : null;
+      const cc  = chg===null?'#7b61ff':chg<0?'#00e8a2':chg>0?'#ff4d6d':'#5a5a72';
+      inner += `<circle cx="${p.x}" cy="${p.y}" r="${i===pts.length-1?5:3}" fill="${cc}"/>`;
+      inner += `<text x="${p.x}" y="${Math.max(p.y-8,10)}" fill="#7070a0" font-size="7" font-family="DM Mono" text-anchor="middle">$${p.p.toLocaleString()}</text>`;
+    });
+    chartInner = `<svg class="phc-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${inner}</svg>`;
+  } else {
+    chartInner = '<div style="font-size:11px;color:var(--muted);padding:8px 0">Not enough history yet.</div>';
+  }
+
+  // Log rows
+  const rows = [...hist].reverse().map((h,i,arr)=>{
+    const prev  = arr[i+1];
+    const delta = prev ? h.price-prev.price : null;
+    const cls   = delta===null?'s':delta<0?'d':delta>0?'r':'s';
+    const lbl   = delta===null?'first listed':delta===0?'— no change':`${delta>0?'+':'-'}$${Math.abs(delta)}/mo`;
+    return `<div class="clog-row">
+      <span class="clog-wk">${fmt(h.week_start)}</span>
+      <span class="clog-pr">$${h.price.toLocaleString()}/mo</span>
+      <span class="clog-ch ${cls}">${lbl}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mBody').innerHTML = `
+    <div class="phc">
+      <div class="phc-ttl">Full price history</div>
+      ${chartInner}
+    </div>
+    <div class="section-title" style="font-size:10px;margin-bottom:10px">WEEKLY LOG</div>
+    <div class="clog">${rows||'<div style="color:var(--muted);font-size:12px;padding:10px 0">No history yet.</div>'}</div>
+    ${url?`<a class="mlink" href="${url}" target="_blank">↗ View on RentCast</a>`:''}`;
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+// ── Interactions ───────────────────────────────────────────────
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+}
+
+function onSearch(v) {
+  searchQ = v;
+  clearTimeout(timer);
+  timer = setTimeout(()=>loadWeek(curWeek), 400);
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function showSkeletons() {
+  document.getElementById('listings').innerHTML = Array(6).fill('<div class="skel"></div>').join('');
+}
+function showErr(e) {
+  document.getElementById('listings').innerHTML = `<div class="state-box">
+    <div class="si">⚡</div>
+    <div class="st">Could not load data</div>
+    <div class="sh">Make sure your API is running:<br><code>uvicorn api:app --reload --port 8000</code><br><br>Error: ${e.message}</div>
+  </div>`;
+}
+function fmt(ds) {
+  if (!ds) return '—';
+  const d = new Date(ds+'T00:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Demo data ──────────────────────────────────────────────────
+function loadDemo() {
+  data = [
+    {listing_id:1,address:'540 Marlowe St',unit:'Apt 12B',neighborhood:'Downtown',city:'Austin',state:'TX',bedrooms:2,bathrooms:1,sqft:820,delta:-350,delta_pct:12.5,price_before:2800,price_after:2450,change_type:'drop'},
+    {listing_id:2,address:'1201 Vance Ave',unit:'Unit 3',neighborhood:'Midtown',city:'Austin',state:'TX',bedrooms:1,bathrooms:1,sqft:640,delta:150,delta_pct:8.3,price_before:1800,price_after:1950,change_type:'rise'},
+    {listing_id:3,address:'88 Greenway Blvd',unit:'#5A',neighborhood:'East Side',city:'Austin',state:'TX',bedrooms:2,bathrooms:2,sqft:1050,delta:0,delta_pct:0,price_before:2100,price_after:2100,change_type:'new'},
+    {listing_id:4,address:'334 Alderton Ct',unit:'#2',neighborhood:'Westwood',city:'Austin',state:'TX',bedrooms:0,bathrooms:1,sqft:480,delta:-75,delta_pct:5.4,price_before:1400,price_after:1325,change_type:'drop'},
+    {listing_id:5,address:'710 Harbor View',unit:'#9C',neighborhood:'North Shore',city:'Austin',state:'TX',bedrooms:3,bathrooms:2,sqft:1380,delta:0,delta_pct:0,price_before:3600,price_after:3600,change_type:'unchanged'},
+    {listing_id:6,address:'22 Foundry Lane',unit:'#14',neighborhood:'Arts District',city:'Austin',state:'TX',bedrooms:1,bathrooms:1,sqft:900,delta:-200,delta_pct:9.1,price_before:2200,price_after:2000,change_type:'drop'},
+  ];
+  setStats({drops:3,rises:1,new_listings:1});
+  setAlert({drops:3,avg_drop:-208,biggest_drop:-350});
+  renderCards();
+  const wks = ['Jan 13','Feb 3','Mar 3','Mar 17','Apr 7','Apr 14 ★'];
+  document.getElementById('timeline').innerHTML = wks.map((w,i)=>
+    `<div class="week-chip ${i===wks.length-1?'active':''} ${i%2===0?'has-drops':''}">${w}</div>`).join('');
+}
+
+// ── Boot ───────────────────────────────────────────────────────
+window.addEventListener('load', () => connectApi());
+</script>
+</body>
+</html>

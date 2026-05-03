@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DriftWatch — Renting Should Be a Breeze</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-top: #c8e8f5;
+    --sky-mid: #dff0f9;
+    --sky-bot: #f0f8fd;
+    --ground: #e8f4e8;
+    --green:  #3a7d54;
+    --green2: #2d6043;
+    --text:   #1a2e22;
+    --muted:  #6b8f7a;
+    --cloud:  #ffffff;
+    --cloud-shadow: rgba(100,160,200,0.15);
+    --sun:    #ffd166;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--sky-top);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+    cursor: default;
+  }
+
+  /* ── Sky gradient ── */
+  .sky {
+    position: fixed; inset: 0; z-index: 0;
+    background: linear-gradient(
+      180deg,
+      #a8d8f0 0%,
+      #c8e8f5 25%,
+      #dff0f9 55%,
+      #eef7f0 80%,
+      #d8eedd 100%
+    );
+  }
+
+  /* ── Sun ── */
+  .sun {
+    position: fixed; top: 60px; right: 120px; z-index: 1;
+    width: 80px; height: 80px; border-radius: 50%;
+    background: radial-gradient(circle, #ffe066 60%, #ffd166 100%);
+    box-shadow: 0 0 0 16px rgba(255,209,102,0.15), 0 0 0 32px rgba(255,209,102,0.08);
+    animation: sunPulse 4s ease-in-out infinite;
+  }
+  @keyframes sunPulse {
+    0%,100% { box-shadow: 0 0 0 16px rgba(255,209,102,0.15), 0 0 0 32px rgba(255,209,102,0.08); }
+    50%      { box-shadow: 0 0 0 22px rgba(255,209,102,0.18), 0 0 0 44px rgba(255,209,102,0.06); }
+  }
+
+  /* ── Birds ── */
+  .birds { position: fixed; top: 100px; left: 10%; z-index: 2; }
+  .bird {
+    display: inline-block; width: 18px; height: 6px;
+    border-top: 2px solid rgba(60,100,140,0.4);
+    border-radius: 50% 50% 0 0 / 6px 6px 0 0;
+    margin: 0 4px;
+    animation: fly 3s ease-in-out infinite;
+  }
+  .bird:nth-child(2) { animation-delay: 0.3s; transform: scale(0.7); }
+  .bird:nth-child(3) { animation-delay: 0.6s; transform: scale(0.85); }
+  @keyframes fly {
+    0%,100% { transform: scaleY(1); }
+    50%      { transform: scaleY(0.4); }
+  }
+
+  /* ── House-clouds ── */
+  .clouds-layer { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+
+  .house-cloud {
+    position: absolute;
+    filter: drop-shadow(0 8px 24px rgba(100,160,200,0.2));
+    animation: drift linear infinite;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  /* Each house-cloud is an SVG */
+  .house-cloud svg { display: block; }
+
+  /* Individual cloud configs */
+  .hc1 { top: 8%;  animation-duration: 38s; animation-delay: 0s;    width: 160px; }
+  .hc2 { top: 18%; animation-duration: 52s; animation-delay: -14s;  width: 120px; }
+  .hc3 { top: 5%;  animation-duration: 44s; animation-delay: -28s;  width: 200px; }
+  .hc4 { top: 28%; animation-duration: 60s; animation-delay: -8s;   width: 100px; }
+  .hc5 { top: 12%; animation-duration: 35s; animation-delay: -20s;  width: 140px; }
+  .hc6 { top: 32%; animation-duration: 48s; animation-delay: -35s;  width: 90px;  }
+  .hc7 { top: 3%;  animation-duration: 55s; animation-delay: -42s;  width: 180px; }
+  .hc8 { top: 22%; animation-duration: 40s; animation-delay: -6s;   width: 110px; }
+
+  @keyframes drift {
+    0%   { transform: translateX(-300px) translateY(0px);   opacity: 0; }
+    3%   { opacity: 0.9; }
+    97%  { opacity: 0.9; }
+    100% { transform: translateX(110vw)  translateY(-20px); opacity: 0; }
+  }
+
+  /* Gentle vertical bob */
+  .house-cloud { animation-name: drift, bob; }
+  .house-cloud { animation-duration: 38s, 6s; animation-timing-function: linear, ease-in-out; animation-iteration-count: infinite, infinite; }
+  .hc1 { animation-duration: 38s, 7s; }
+  .hc2 { animation-duration: 52s, 5s; animation-delay: -14s, -2s; }
+  .hc3 { animation-duration: 44s, 8s; animation-delay: -28s, -4s; }
+  .hc4 { animation-duration: 60s, 6s; animation-delay: -8s,  -1s; }
+  .hc5 { animation-duration: 35s, 5s; animation-delay: -20s, -3s; }
+  .hc6 { animation-duration: 48s, 7s; animation-delay: -35s, -5s; }
+  .hc7 { animation-duration: 55s, 9s; animation-delay: -42s, -2s; }
+  .hc8 { animation-duration: 40s, 6s; animation-delay: -6s,  -4s; }
+
+  @keyframes bob {
+    0%,100% { margin-top: 0px; }
+    50%      { margin-top: 12px; }
+  }
+
+  /* ── Ground / Hills ── */
+  .hills {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 3;
+    height: 220px; pointer-events: none;
+  }
+
+  /* ── Main content ── */
+  .content {
+    position: relative; z-index: 10;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 24px;
+    text-align: center;
+  }
+
+  /* Nav */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    padding: 20px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900; font-size: 22px;
+    color: var(--green2);
+    letter-spacing: -0.5px;
+  }
+  .nav-logo em { font-style: italic; color: var(--green); }
+  .nav-links { display: flex; gap: 8px; }
+  .nav-btn {
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    padding: 8px 18px; border-radius: 20px; cursor: pointer;
+    text-decoration: none; transition: all 0.2s; font-weight: 500;
+  }
+  .nav-btn.ghost {
+    background: rgba(255,255,255,0.6); color: var(--green2);
+    border: 1px solid rgba(58,125,84,0.2);
+    backdrop-filter: blur(8px);
+  }
+  .nav-btn.ghost:hover { background: rgba(255,255,255,0.9); }
+  .nav-btn.solid {
+    background: var(--green); color: #fff; border: 1px solid var(--green);
+  }
+  .nav-btn.solid:hover { background: var(--green2); }
+
+  /* Hero */
+  .hero { max-width: 680px; margin: 0 auto; padding-top: 60px; }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(10px);
+    border: 1px solid rgba(58,125,84,0.2); border-radius: 20px;
+    padding: 6px 16px; font-size: 12px; color: var(--green2);
+    font-weight: 500; letter-spacing: 0.5px; margin-bottom: 28px;
+    animation: fadeUp 0.8s ease both;
+  }
+  .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(48px, 8vw, 86px);
+    font-weight: 900; line-height: 1.0;
+    color: var(--text);
+    margin-bottom: 8px;
+    animation: fadeUp 0.8s ease 0.1s both;
+    letter-spacing: -2px;
+  }
+  h1 em {
+    font-style: italic; color: var(--green);
+    display: block;
+  }
+
+  .slogan {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(16px, 3vw, 22px);
+    color: var(--muted); font-style: italic; font-weight: 700;
+    margin-bottom: 32px; letter-spacing: 0.3px;
+    animation: fadeUp 0.8s ease 0.2s both;
+  }
+
+  .sub {
+    font-size: 16px; color: var(--muted); line-height: 1.7;
+    max-width: 460px; margin: 0 auto 40px;
+    animation: fadeUp 0.8s ease 0.3s both;
+    font-weight: 400;
+  }
+
+  .cta-row {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+    animation: fadeUp 0.8s ease 0.4s both;
+  }
+  .cta {
+    font-family: 'DM Sans', sans-serif; font-weight: 500;
+    font-size: 15px; padding: 14px 32px; border-radius: 30px;
+    cursor: pointer; text-decoration: none; transition: all 0.25s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .cta.primary {
+    background: var(--green); color: #fff;
+    box-shadow: 0 4px 20px rgba(58,125,84,0.3);
+  }
+  .cta.primary:hover {
+    background: var(--green2);
+    box-shadow: 0 8px 28px rgba(58,125,84,0.4);
+    transform: translateY(-1px);
+  }
+  .cta.secondary {
+    background: rgba(255,255,255,0.75); color: var(--green2);
+    border: 1px solid rgba(58,125,84,0.25); backdrop-filter: blur(10px);
+  }
+  .cta.secondary:hover { background: rgba(255,255,255,0.95); transform: translateY(-1px); }
+
+  /* Feature pills */
+  .features {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    margin-top: 52px;
+    animation: fadeUp 0.8s ease 0.5s both;
+  }
+  .feat {
+    background: rgba(255,255,255,0.65); backdrop-filter: blur(10px);
+    border: 1px solid rgba(58,125,84,0.15); border-radius: 12px;
+    padding: 12px 18px; font-size: 13px; color: var(--text);
+    display: flex; align-items: center; gap: 8px; font-weight: 400;
+    transition: all 0.2s;
+  }
+  .feat:hover { background: rgba(255,255,255,0.9); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(58,125,84,0.1); }
+  .feat-icon { font-size: 18px; }
+
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  /* ── Scroll section ── */
+  .how-it-works {
+    position: relative; z-index: 10;
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(58,125,84,0.1);
+    padding: 80px 24px 100px;
+    margin-top: 40px;
+  }
+  .hiw-inner { max-width: 860px; margin: 0 auto; }
+  .hiw-title {
+    font-family: 'Playfair Display', serif; font-size: 36px;
+    font-weight: 900; color: var(--text); text-align: center;
+    margin-bottom: 8px; letter-spacing: -1px;
+  }
+  .hiw-sub { text-align: center; color: var(--muted); font-size: 15px; margin-bottom: 56px; }
+  .steps-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+  .step-card {
+    background: rgba(255,255,255,0.8); border: 1px solid rgba(58,125,84,0.12);
+    border-radius: 16px; padding: 28px 24px; text-align: center;
+    transition: all 0.25s;
+  }
+  .step-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(58,125,84,0.12); background: #fff; }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--green); color: #fff;
+    font-family: 'Playfair Display', serif; font-weight: 900; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .step-icon { font-size: 32px; margin-bottom: 12px; }
+  .step-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .step-desc { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* Bottom CTA */
+  .bottom-cta {
+    position: relative; z-index: 10;
+    text-align: center; padding: 80px 24px 120px;
+  }
+  .bottom-cta h2 {
+    font-family: 'Playfair Display', serif; font-size: clamp(28px,5vw,48px);
+    font-weight: 900; color: var(--text); margin-bottom: 12px; letter-spacing: -1px;
+  }
+  .bottom-cta h2 em { font-style: italic; color: var(--green); }
+  .bottom-cta p { color: var(--muted); font-size: 15px; margin-bottom: 32px; }
+
+  /* Footer */
+  footer {
+    position: relative; z-index: 10;
+    background: var(--green2); color: rgba(255,255,255,0.7);
+    padding: 24px 40px; display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px;
+  }
+  .footer-logo { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 16px; color: #fff; }
+
+  @media(max-width:640px) {
+    nav { padding: 16px 20px; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .sun { width: 50px; height: 50px; right: 40px; top: 40px; }
+    footer { flex-direction: column; gap: 8px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sky -->
+<div class="sky"></div>
+
+<!-- Sun -->
+<div class="sun"></div>
+
+<!-- Birds -->
+<div class="birds">
+  <div class="bird"></div>
+  <div class="bird"></div>
+  <div class="bird"></div>
+</div>
+
+<!-- Floating house-clouds -->
+<div class="clouds-layer">
+
+  <!-- House cloud SVG template — a puffy cloud with a little house chimney on top -->
+  <div class="house-cloud hc1">
+    <svg viewBox="0 0 160 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- chimney -->
+      <rect x="72" y="12" width="12" height="18" rx="2" fill="white" opacity="0.95"/>
+      <rect x="70" y="10" width="16" height="5" rx="2" fill="white" opacity="0.9"/>
+      <!-- smoke puffs -->
+      <circle cx="78" cy="6"  r="4" fill="white" opacity="0.5"/>
+      <circle cx="80" cy="1"  r="3" fill="white" opacity="0.3"/>
+      <!-- main cloud body -->
+      <ellipse cx="80" cy="58" rx="60" ry="28" fill="white" opacity="0.97"/>
+      <ellipse cx="50" cy="52" rx="32" ry="24" fill="white" opacity="0.97"/>
+      <ellipse cx="110" cy="54" rx="30" ry="22" fill="white" opacity="0.97"/>
+      <ellipse cx="80" cy="42" rx="36" ry="26" fill="white" opacity="0.97"/>
+      <!-- roof shape integrated into cloud -->
+      <polygon points="62,38 80,22 98,38" fill="white" opacity="0.97"/>
+      <!-- window -->
+      <rect x="74" y="30" width="12" height="10" rx="2" fill="#c8e8f5" opacity="0.8"/>
+      <!-- cloud bottom flat -->
+      <rect x="20" y="72" width="120" height="16" rx="8" fill="white" opacity="0.97"/>
+      <!-- shadow underneath -->
+      <ellipse cx="80" cy="86" rx="55" ry="6" fill="rgba(100,160,200,0.12)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc2">
+    <svg viewBox="0 0 120 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="53" y="9" width="10" height="14" rx="2" fill="white" opacity="0.95"/>
+      <rect x="51" y="7" width="14" height="4" rx="2" fill="white" opacity="0.9"/>
+      <circle cx="58" cy="4" r="3" fill="white" opacity="0.4"/>
+      <ellipse cx="60" cy="46" rx="46" ry="22" fill="white" opacity="0.97"/>
+      <ellipse cx="36" cy="42" rx="26" ry="20" fill="white" opacity="0.97"/>
+      <ellipse cx="84" cy="43" rx="24" ry="18" fill="white" opacity="0.97"/>
+      <ellipse cx="60" cy="32" rx="28" ry="22" fill="white" opacity="0.97"/>
+      <polygon points="46,30 60,16 74,30" fill="white" opacity="0.97"/>
+      <rect x="55" y="22" width="10" height="8" rx="2" fill="#c8e8f5" opacity="0.8"/>
+      <rect x="14" y="58" width="92" height="12" rx="6" fill="white" opacity="0.97"/>
+      <ellipse cx="60" cy="68" rx="42" ry="5" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc3">
+    <svg viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="91" y="14" width="14" height="22" rx="2" fill="white" opacity="0.95"/>
+      <rect x="88" y="12" width="20" height="6" rx="2" fill="white" opacity="0.9"/>
+      <circle cx="98" cy="7"  r="5" fill="white" opacity="0.45"/>
+      <circle cx="101" cy="2" r="3.5" fill="white" opacity="0.25"/>
+      <ellipse cx="100" cy="72" rx="76" ry="34" fill="white" opacity="0.97"/>
+      <ellipse cx="62"  cy="64" rx="42" ry="30" fill="white" opacity="0.97"/>
+      <ellipse cx="140" cy="66" rx="40" ry="28" fill="white" opacity="0.97"/>
+      <ellipse cx="100" cy="52" rx="46" ry="32" fill="white" opacity="0.97"/>
+      <polygon points="78,48 100,28 122,48" fill="white" opacity="0.97"/>
+      <rect x="92" y="34" width="16" height="14" rx="2" fill="#c8e8f5" opacity="0.8"/>
+      <!-- two windows -->
+      <rect x="78" y="60" width="10" height="8" rx="1.5" fill="#c8e8f5" opacity="0.6"/>
+      <rect x="112" y="60" width="10" height="8" rx="1.5" fill="#c8e8f5" opacity="0.6"/>
+      <rect x="24" y="90" width="152" height="18" rx="9" fill="white" opacity="0.97"/>
+      <ellipse cx="100" cy="106" rx="70" ry="7" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc4">
+    <svg viewBox="0 0 100 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="43" y="8"  width="9"  height="12" rx="2" fill="white" opacity="0.95"/>
+      <rect x="41" y="6"  width="13" height="4"  rx="2" fill="white" opacity="0.9"/>
+      <circle cx="47" cy="3" r="2.5" fill="white" opacity="0.4"/>
+      <ellipse cx="50" cy="38" rx="38" ry="18" fill="white" opacity="0.97"/>
+      <ellipse cx="30" cy="34" rx="22" ry="16" fill="white" opacity="0.97"/>
+      <ellipse cx="70" cy="35" rx="20" ry="15" fill="white" opacity="0.97"/>
+      <ellipse cx="50" cy="26" rx="24" ry="18" fill="white" opacity="0.97"/>
+      <polygon points="38,24 50,12 62,24" fill="white" opacity="0.97"/>
+      <rect x="45" y="16" width="9" height="7" rx="1.5" fill="#c8e8f5" opacity="0.8"/>
+      <rect x="12" y="48" width="76" height="10" rx="5" fill="white" opacity="0.97"/>
+      <ellipse cx="50" cy="56" rx="35" ry="4" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc5">
+    <svg viewBox="0 0 140 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="63" y="11" width="11" height="16" rx="2" fill="white" opacity="0.95"/>
+      <rect x="61" y="9"  width="15" height="5"  rx="2" fill="white" opacity="0.9"/>
+      <circle cx="68" cy="5" r="4" fill="white" opacity="0.4"/>
+      <ellipse cx="70" cy="52" rx="54" ry="26" fill="white" opacity="0.97"/>
+      <ellipse cx="44" cy="47" rx="30" ry="22" fill="white" opacity="0.97"/>
+      <ellipse cx="97" cy="49" rx="28" ry="20" fill="white" opacity="0.97"/>
+      <ellipse cx="70" cy="37" rx="34" ry="24" fill="white" opacity="0.97"/>
+      <polygon points="55,35 70,19 85,35" fill="white" opacity="0.97"/>
+      <rect x="64" y="24" width="13" height="11" rx="2" fill="#c8e8f5" opacity="0.8"/>
+      <rect x="18" y="66" width="104" height="13" rx="6.5" fill="white" opacity="0.97"/>
+      <ellipse cx="70" cy="77" rx="48" ry="5" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc6">
+    <svg viewBox="0 0 90 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="38" y="7"  width="8"  height="11" rx="2" fill="white" opacity="0.95"/>
+      <rect x="36" y="5"  width="12" height="4"  rx="2" fill="white" opacity="0.9"/>
+      <circle cx="42" cy="3" r="2" fill="white" opacity="0.35"/>
+      <ellipse cx="45" cy="35" rx="34" ry="16" fill="white" opacity="0.97"/>
+      <ellipse cx="27" cy="31" rx="20" ry="14" fill="white" opacity="0.97"/>
+      <ellipse cx="63" cy="32" rx="18" ry="13" fill="white" opacity="0.97"/>
+      <ellipse cx="45" cy="23" rx="22" ry="16" fill="white" opacity="0.97"/>
+      <polygon points="34,21 45,10 56,21" fill="white" opacity="0.97"/>
+      <rect x="40" y="14" width="8" height="6" rx="1.5" fill="#c8e8f5" opacity="0.8"/>
+      <rect x="11" y="44" width="68" height="9" rx="4.5" fill="white" opacity="0.97"/>
+      <ellipse cx="45" cy="51" rx="31" ry="3.5" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc7">
+    <svg viewBox="0 0 180 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- double chimney for variety -->
+      <rect x="74" y="13" width="10" height="20" rx="2" fill="white" opacity="0.95"/>
+      <rect x="72" y="11" width="14" height="5"  rx="2" fill="white" opacity="0.9"/>
+      <rect x="96" y="16" width="8"  height="16" rx="2" fill="white" opacity="0.95"/>
+      <rect x="94" y="14" width="12" height="4"  rx="2" fill="white" opacity="0.9"/>
+      <circle cx="79" cy="7"  r="4" fill="white" opacity="0.4"/>
+      <circle cx="100" cy="10" r="3" fill="white" opacity="0.3"/>
+      <ellipse cx="90"  cy="65" rx="70" ry="30" fill="white" opacity="0.97"/>
+      <ellipse cx="56"  cy="58" rx="40" ry="26" fill="white" opacity="0.97"/>
+      <ellipse cx="126" cy="60" rx="38" ry="24" fill="white" opacity="0.97"/>
+      <ellipse cx="90"  cy="47" rx="44" ry="30" fill="white" opacity="0.97"/>
+      <polygon points="72,44 90,25 108,44" fill="white" opacity="0.97"/>
+      <rect x="83" y="31" width="14" height="12" rx="2" fill="#c8e8f5" opacity="0.8"/>
+      <rect x="66" y="55" width="10" height="8" rx="1.5" fill="#c8e8f5" opacity="0.6"/>
+      <rect x="104" y="55" width="10" height="8" rx="1.5" fill="#c8e8f5" opacity="0.6"/>
+      <rect x="20" y="82" width="140" height="16" rx="8" fill="white" opacity="0.97"/>
+      <ellipse cx="90" cy="96" rx="64" ry="6" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+  <div class="house-cloud hc8">
+    <svg viewBox="0 0 110 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="48" y="10" width="10" height="15" rx="2" fill="white" opacity="0.95"/>
+      <rect x="46" y="8"  width="14" height="5"  rx="2" fill="white" opacity="0.9"/>
+      <circle cx="53" cy="5" r="3.5" fill="white" opacity="0.4"/>
+      <ellipse cx="55" cy="44" rx="44" ry="20" fill="white" opacity="0.97"/>
+      <ellipse cx="33" cy="39" rx="26" ry="18" fill="white" opacity="0.97"/>
+      <ellipse cx="78" cy="41" rx="24" ry="16" fill="white" opacity="0.97"/>
+      <ellipse cx="55" cy="30" rx="30" ry="22" fill="white" opacity="0.97"/>
+      <polygon points="42,28 55,14 68,28" fill="white" opacity="0.97"/>
+      <rect x="49" y="19" width="12" height="9" rx="2" fill="#c8e8f5" opacity="0.8"/>
+      <rect x="16" y="56" width="78" height="8" rx="4" fill="white" opacity="0.97"/>
+      <ellipse cx="55" cy="62" rx="36" ry="4" fill="rgba(100,160,200,0.1)"/>
+    </svg>
+  </div>
+
+</div>
+
+<!-- Rolling hills SVG -->
+<div class="hills">
+  <svg viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+    <path d="M0,180 C120,120 240,160 360,140 C480,120 600,170 720,150 C840,130 960,160 1080,140 C1200,120 1320,155 1440,135 L1440,220 L0,220 Z" fill="#b8dbb8" opacity="0.6"/>
+    <path d="M0,200 C180,160 300,190 480,170 C660,150 780,185 960,168 C1140,150 1300,180 1440,165 L1440,220 L0,220 Z" fill="#c8e4c8" opacity="0.8"/>
+    <path d="M0,210 C200,185 400,205 600,195 C800,185 1000,205 1200,195 C1320,188 1400,200 1440,198 L1440,220 L0,220 Z" fill="#d8ecd8"/>
+    <!-- little trees on hills -->
+    <g fill="#3a7d54" opacity="0.5">
+      <polygon points="100,195 108,210 92,210"/>
+      <polygon points="200,188 210,205 190,205"/>
+      <polygon points="350,192 360,208 340,208"/>
+      <polygon points="520,185 532,202 508,202"/>
+      <polygon points="700,190 710,207 690,207"/>
+      <polygon points="880,186 892,204 868,204"/>
+      <polygon points="1050,191 1062,208 1038,208"/>
+      <polygon points="1220,187 1232,205 1208,205"/>
+      <polygon points="1380,193 1392,210 1368,210"/>
+    </g>
+  </svg>
+</div>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo">Drift<em>Watch</em></div>
+  <div class="nav-links">
+    <a class="nav-btn ghost" href="submit/submit.html">List your place</a>
+    <a class="nav-btn solid" href="apartment-tracker.html">Browse listings</a>
+  </div>
+</nav>
+
+<!-- Hero content -->
+<div class="content">
+  <div class="hero">
+    <div class="tag">
+      <div class="tag-dot"></div>
+      Live price tracking · Updated weekly
+    </div>
+
+    <h1>Know when<br><em>rent moves.</em></h1>
+
+    <p class="slogan">"Renting should be a breeze."</p>
+
+    <p class="sub">
+      DriftWatch tracks apartment prices week over week so you always know when the market shifts — before everyone else does.
+    </p>
+
+    <div class="cta-row">
+      <a class="cta primary" href="apartment-tracker.html">
+        🏠 See price changes
+      </a>
+      <a class="cta secondary" href="submit/submit.html">
+        List your apartment →
+      </a>
+    </div>
+
+    <div class="features">
+      <div class="feat"><span class="feat-icon">📉</span> Weekly price drops</div>
+      <div class="feat"><span class="feat-icon">🗺️</span> Track by neighborhood</div>
+      <div class="feat"><span class="feat-icon">🔔</span> Get alerts</div>
+      <div class="feat"><span class="feat-icon">📊</span> Price history charts</div>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div class="how-it-works">
+  <div class="hiw-inner">
+    <h2 class="hiw-title">How DriftWatch works</h2>
+    <p class="hiw-sub">We watch the market so you don't have to.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">🔍</div>
+        <div class="step-num">1</div>
+        <div class="step-title">We scan listings weekly</div>
+        <div class="step-desc">Every Monday we pull fresh rental data across your city and compare it to the week before.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">📊</div>
+        <div class="step-num">2</div>
+        <div class="step-title">We surface what changed</div>
+        <div class="step-desc">Price drops, raises, and new listings are highlighted so you see the market in motion, not just a static snapshot.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-icon">🌬️</div>
+        <div class="step-num">3</div>
+        <div class="step-title">You rent with confidence</div>
+        <div class="step-desc">Know if that listing just dropped $200 or quietly crept up. Time your move when the breeze is in your favor.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom CTA -->
+<div class="bottom-cta">
+  <h2>Ready to find your<br><em>perfect drift?</em></h2>
+  <p>Join renters who never overpay again.</p>
+  <a class="cta primary" href="apartment-tracker.html" style="display:inline-flex">
+    🏠 Browse this week's changes
+  </a>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-logo">DriftWatch</div>
+  <div>Renting should be a breeze · © 2026</div>
+  <div style="display:flex;gap:16px">
+    <a href="submit/submit.html" style="color:rgba(255,255,255,0.6);text-decoration:none">List your place</a>
+    <a href="apartment-tracker.html" style="color:rgba(255,255,255,0.6);text-decoration:none">Browse</a>
+  </div>
+</footer>
+
+</body>
+</html>
