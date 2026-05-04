@@ -1,7 +1,3 @@
 {
-  "version": 2,
-  "outputDirectory": ".",
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
-  ]
+  "version": 2
 }
