@@ -1,0 +1,7 @@
+venv/
+scraper/
+api/
+db/
+requirements.txt
+Procfile
+create_admin.py
